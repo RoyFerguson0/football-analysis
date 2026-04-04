@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+.vscode
+.idea
+.env
+uv.lock
+.python-version
+yolo26x.pt
+yolo26n.pt
+NOTES.txt
+runs
+training/football-players-detection-1
+models/*
+!.gitkeep
