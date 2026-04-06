@@ -53,7 +53,7 @@ class CameraMovementEstimator():
                 return pickle.load(f)
 
         # Initialize camera movements list frames, xy positions times number of frames
-        camera_movement = [[0, 0]]*len(frames)
+        camera_movement = [[0, 0] for _ in range(len(frames))]
 
         # Grayscale cause brightness patterns matter more than colour for optical flow
         old_gray = cv2.cvtColor(frames[0], cv2.COLOR_BGR2GRAY)
@@ -66,29 +66,36 @@ class CameraMovementEstimator():
             frame_gray = cv2.cvtColor(frames[frame_num], cv2.COLOR_BGR2GRAY)
 
             # Lucas-Kanade optical flow to find where the features have moved to in the next frame
-            new_features, _, _ = cv2.calcOpticalFlowPyrLK(
+            new_features, status, _ = cv2.calcOpticalFlowPyrLK(
                 old_gray, frame_gray, old_features, None, **self.lk_params)
 
-            max_distance = 0
+            dx_list = []
+            dy_list = []
 
-            camera_movement_x, camera_movement_y = 0, 0
+            for i, (new, old, st) in enumerate(zip(new_features, old_features, status)):
+                if st[0] != 1:
+                    continue
 
-            for i, (new, old) in enumerate(zip(new_features, old_features)):
                 new_features_point = new.ravel()
                 old_features_point = old.ravel()
 
-                distance = measure_distance(
-                    new_features_point, old_features_point)
-                if distance > max_distance:
-                    max_distance = distance
-                    camera_movement_x, camera_movement_y = measure_xy_distance(old_features_point,
-                                                                               new_features_point)
+                dx, dy = measure_xy_distance(
+                    old_features_point, new_features_point)
+                dx_list.append(dx)
+                dy_list.append(dy)
 
-            if max_distance > self.minimum_distance:
-                camera_movement[frame_num] = [
-                    camera_movement_x, camera_movement_y]
-                old_features = cv2.goodFeaturesToTrack(
-                    frame_gray, **self.features)
+            if dx_list and dy_list:
+                camera_movement_x = float(np.median(dx_list))
+                camera_movement_y = float(np.median(dy_list))
+
+                movement_magnitude = np.hypot(
+                    camera_movement_x, camera_movement_y)
+
+                if movement_magnitude > self.minimum_distance:
+                    camera_movement[frame_num] = [
+                        camera_movement_x, camera_movement_y]
+            old_features = cv2.goodFeaturesToTrack(
+                frame_gray, **self.features)
 
             old_gray = frame_gray.copy()
 
@@ -98,10 +105,10 @@ class CameraMovementEstimator():
 
         return camera_movement
 
-    def draw_camera_movement(self, frame, camera_movement_per_frame):
+    def draw_camera_movement(self, frames, camera_movement_per_frame):
         output_frames = []
 
-        for frame_num, frame in enumerate(frame):
+        for frame_num, frame in enumerate(frames):
             frame = frame.copy()
 
             overlay = frame.copy()
