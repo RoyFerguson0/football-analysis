@@ -17,3 +17,9 @@ def measure_distance(point1, point2):
 def measure_xy_distance(point1, point2):
     # Calcumate Distance between x and y coordinates separately
     return point1[0] - point2[0], point1[1] - point2[1]
+
+
+def get_foot_position(bbox):
+    # Return the center of the bottom edge of the bbox as the foot position
+    x1, y1, x2, y2 = bbox
+    return int((x1 + x2) / 2), int(y2)
