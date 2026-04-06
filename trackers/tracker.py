@@ -5,12 +5,28 @@ from ultralytics import YOLO
 import cv2
 import os
 from utils import get_center_of_bbox, get_bbox_width
+import pandas as pd
 
 
 class Tracker:
     def __init__(self, model_path):
         self.model = YOLO(model_path)
         self.tracker = sv.ByteTrack()
+
+    def interpolate_ball_positions(self, ball_positions):
+        ball_positions = [x.get(1, {}).get('bbox', []) for x in ball_positions]
+        df_ball_positions = pd.DataFrame(
+            ball_positions, columns=['x1', 'y1', 'x2', 'y2'])
+
+        # Interpolate missing values
+        df_ball_positions = df_ball_positions.interpolate()
+        # Edge case if the missing detection is first one it won't interpolate it so we can backfill it which nearest detection we can find
+        df_ball_positions = df_ball_positions.bfill()
+
+        ball_positions = [{1: {"bbox": x}}
+                          for x in df_ball_positions.to_numpy().tolist()]
+
+        return ball_positions
 
     def detect_frames(self, frames):
         # Process frames in batches to optimize performance
@@ -19,7 +35,7 @@ class Tracker:
         for i in range(0, len(frames), batch_size):
             batch_frames = frames[i:i + batch_size]
             batch_detections = self.model.predict(
-                batch_frames, conf=0.1, save=False)
+                batch_frames, conf=0.2, save=False)
             detections.extend(batch_detections)
         return detections
 
@@ -71,18 +87,22 @@ class Tracker:
                 track_id = frame_detection[4]
 
                 if cls_id == cls_names_inv['player']:
-                    tracks["players"][frame_num][track_id] = {"bbox": bbox}
+                    tracks["players"][frame_num][track_id] = {
+                        "bbox": bbox, "conf": frame_detection[2].tolist()}
 
                 if cls_id == cls_names_inv['referee']:
-                    tracks["referees"][frame_num][track_id] = {"bbox": bbox}
+                    tracks["referees"][frame_num][track_id] = {
+                        "bbox": bbox, "conf": frame_detection[2].tolist()}
 
             # Don't want to track the ball so looping over the original detections to get the ball bbox
             for frame_detection in detection_supervision:
                 bbox = frame_detection[0].tolist()
                 cls_id = frame_detection[3]
+                print(frame_detection)
 
                 if cls_id == cls_names_inv['ball']:
-                    tracks["ball"][frame_num][1] = {"bbox": bbox}
+                    tracks["ball"][frame_num][1] = {
+                        "bbox": bbox, "conf": frame_detection[2].tolist()}
 
         if stub_path:
             with open(stub_path, 'wb') as f:
@@ -90,7 +110,7 @@ class Tracker:
 
         return tracks
 
-    def draw_ellipse(self, frame, bbox, color, track_id=None):
+    def draw_ellipse(self, frame, bbox, color, track_id=None, conf=None):
         y2 = int(bbox[3])
         x_center, y_center = get_center_of_bbox(bbox)
         width = get_bbox_width(bbox)
@@ -135,9 +155,23 @@ class Tracker:
                 (0, 0, 0),
                 2)
 
+        if conf:
+            conf_text = f"{conf:.2f}"
+            x1_text = x1_rect + 12
+
+            cv2.putText(
+                frame,
+                conf_text,
+                (int(x1_text), int(y2_rect + 20)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 0, 0),
+                2
+            )
+
         return frame
 
-    def draw_triangle(self, frame, bbox, color):
+    def draw_triangle(self, frame, bbox, color, conf=None):
         y = int(bbox[1])
         x_center, y_center = get_center_of_bbox(bbox)
 
@@ -149,6 +183,18 @@ class Tracker:
 
         cv2.drawContours(frame, [triangle_points], 0, color, cv2.FILLED)
         cv2.drawContours(frame, [triangle_points], 0, (0, 0, 0), 2)
+
+        if conf:
+            conf_text = f"{conf:.2f}"
+            cv2.putText(
+                frame,
+                conf_text,
+                (x_center, y + 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 0, 0),
+                2
+            )
 
         return frame
 
@@ -166,17 +212,19 @@ class Tracker:
             for track_id, player in player_dict.items():
                 colour = player.get("team_colour", (0, 0, 255))
                 frame = self.draw_ellipse(
-                    frame, player["bbox"],  colour, track_id)
+                    frame, player["bbox"],  colour, track_id, conf=player.get("conf", None))
 
             # Draw Referees
             for track_id, referee in referee_dict.items():
                 frame = self.draw_ellipse(
-                    frame, referee["bbox"],  (0, 255, 255), track_id=None)
+                    frame, referee["bbox"],  (0, 255, 255), track_id=None, conf=referee.get("conf", None))
 
             # Draw Ball
             for ball_id, ball in ball_dict.items():
+                print("Ball: ", ball)
+
                 frame = self.draw_triangle(
-                    frame, ball["bbox"], (0, 255, 0))
+                    frame, ball["bbox"], (0, 255, 0), conf=ball.get("conf", None))
 
             output_video_frames.append(frame)
 

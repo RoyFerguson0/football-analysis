@@ -15,9 +15,9 @@ def main():
 
     # Get object tracks
     tracks = tracker.get_object_tracks(
-        video_frame, read_from_stub=True, stub_path="stubs/track_stubs.pkl")
+        video_frame, read_from_stub=False, stub_path="stubs/track_stubs.pkl")
 
-    # # Save cropped image of player
+    # region Save cropped image of player
     # for track_id, player in tracks["players"][0].items():
     #     bbox = player["bbox"]
     #     frame = video_frame[0]
@@ -29,6 +29,10 @@ def main():
 
     #     cv2.imwrite(f"output_videos/cropped_img.jpg", cropped_image)
     #     break
+    # endregion
+
+    # Interpolate ball positions
+    tracks["ball"] = tracker.interpolate_ball_positions(tracks["ball"])
 
     # Initialize team assigner
     team_assigner = TeamAssigner()
