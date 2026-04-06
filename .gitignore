@@ -20,4 +20,6 @@ NOTES.txt
 runs
 training/football-players-detection-1
 models/*
+output_videos/*
+stubs/*
 !.gitkeep
