@@ -120,7 +120,7 @@ class Tracker:
 
         return tracks
 
-    def draw_ellipse(self, frame, bbox, color, track_id=None, conf=None):
+    def draw_ellipse(self, frame, bbox, color, track_id=None, conf=None, team=None):
         y2 = int(bbox[3])
         x_center, y_center = get_center_of_bbox(bbox)
         width = get_bbox_width(bbox)
@@ -164,6 +164,16 @@ class Tracker:
                 0.6,
                 (0, 0, 0),
                 2)
+        if team:
+            cv2.putText(
+                frame,
+                f"T{team} ID:{track_id}",
+                (int(bbox[0]), max(20, int(bbox[1]) - 10)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                color,
+                2
+            )
 
         if conf:
             conf_text = f"{conf:.2f}"
@@ -248,7 +258,7 @@ class Tracker:
             for track_id, player in player_dict.items():
                 colour = player.get("team_colour", (0, 0, 255))
                 frame = self.draw_ellipse(
-                    frame, player["bbox"],  colour, track_id, conf=player.get("conf", None))
+                    frame, player["bbox"],  colour, track_id, conf=player.get("conf", None), team=player.get("team", None))
 
                 if player.get("has_ball", False):
                     frame = self.draw_triangle(

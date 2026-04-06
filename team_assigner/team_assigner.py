@@ -73,6 +73,12 @@ class TeamAssigner:
         team_id = self.kmeans.predict(player_colour.reshape(1, -1))[0]
         team_id += 1
 
+        # Temp hardcode goalkeeper ids to team x as our model is not trained enough to detect goalkeepers
+        if player_id in [69, 73, 77]:
+            team_id = 2
+        if player_id in [148, 157, 215]:
+            team_id = 1
+
         self.player_team_dict[player_id] = team_id
 
         return team_id
