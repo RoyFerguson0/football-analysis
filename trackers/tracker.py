@@ -187,7 +187,7 @@ class Tracker:
             )
 
         if conf:
-            conf_text = f"{conf:.2f}"
+            conf_text = f"{conf:.2f} conf"
             x1_text = x2_rect + 12
 
             cv2.putText(
@@ -195,7 +195,7 @@ class Tracker:
                 conf_text,
                 (int(x1_text), int(y2_rect)),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
+                0.5,
                 (0, 0, 0),
                 2
             )
@@ -216,13 +216,13 @@ class Tracker:
         cv2.drawContours(frame, [triangle_points], 0, (0, 0, 0), 2)
 
         if conf:
-            conf_text = f"{conf:.2f}"
+            conf_text = f"{conf:.2f} conf"
             cv2.putText(
                 frame,
                 conf_text,
                 (x_center + 10, y + 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
+                0.5,
                 (0, 0, 0),
                 2
             )

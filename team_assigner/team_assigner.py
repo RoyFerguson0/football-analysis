@@ -74,10 +74,15 @@ class TeamAssigner:
         team_id += 1
 
         # Temp hardcode goalkeeper ids to team x as our model is not trained enough to detect goalkeepers
-        if player_id in [69, 73, 77]:
-            team_id = 2
-        if player_id in [148, 157, 215]:
-            team_id = 1
+        # Read player_team_dict player 7 team
+        player_7_team = self.player_team_dict.get(7, None)
+        other_team = 2 if player_7_team == 1 else 1
+        if player_7_team is not None:
+            if player_id in [68, 72, 76]:
+                team_id = player_7_team
+
+        if player_id in [147, 156]:
+            team_id = other_team
 
         self.player_team_dict[player_id] = team_id
 
